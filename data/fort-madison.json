@@ -1,0 +1,12 @@
+{
+  "bridge": {"name":"Fort Madison Toll Bridge","lat":40.62833,"lon":-91.29278,"riverMile":383.7,"railMile":234.3},
+  "station": {"name":"Fort Madison Amtrak Station","lat":40.62958,"lon":-91.30903},
+  "locks": [
+    {"name":"Lock & Dam 18","number":"18","riverMile":410.5,"lat":40.9464,"lon":-91.0286,"side":"north"},
+    {"name":"Lock & Dam 19","number":"19","riverMile":364.2,"lat":40.3974,"lon":-91.3707,"side":"south"}
+  ],
+  "railTripwires": [
+    {"name":"Pontoosuc corridor","railMile":226.9,"status":"research","side":"east"},
+    {"name":"La Plata corridor","railMile":313.2,"status":"commercial-provider-candidate","side":"west"}
+  ]
+}
