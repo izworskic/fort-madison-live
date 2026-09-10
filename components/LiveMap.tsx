@@ -8,7 +8,7 @@ export default function LiveMap({data}:{data:DashboardSnapshot}){
     let map:any; let cancelled=false;
     (async()=>{
       if(!ref.current)return;
-      const maplibre=(await import("maplibre-gl")).default;
+      const maplibre=await import("maplibre-gl");
       if(cancelled||!ref.current)return;
       map=new maplibre.Map({container:ref.current,center:[-91.2928,40.6283],zoom:10.1,attributionControl:false,style:{version:8,sources:{osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},layers:[{id:"osm",type:"raster",source:"osm"}]}});
       map.addControl(new maplibre.NavigationControl({showCompass:false}),"top-right");
