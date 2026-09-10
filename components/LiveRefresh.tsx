@@ -11,11 +11,12 @@ function range(a?:string,b?:string,best?:string){if(a&&b&&a!==b)return `${time(a
 function trend(v:number|null){if(v===null)return "";return `${v>0?"↑":v<0?"↓":"→"}${Math.abs(v).toFixed(2)}`;}
 
 function track(name:string,params:Record<string,unknown>={}){if(typeof window!=="undefined") (window as any).gtag?.("event",name,params);}
+function liveApiUrl(){if(typeof window!=="undefined"&&window.location.pathname.startsWith("/national-tools/fort-madison-live"))return "/national-tools/fort-madison-live/api/live";return "/api/live";}
 
 export default function LiveRefresh({initial}:{initial:DashboardSnapshot}){
   const [data,setData]=useState(initial); const [now,setNow]=useState(Date.now());
   useEffect(()=>{track("fort_madison_loaded",{next_event_kind:initial.nextEvent.kind,convergence_state:initial.convergence.state});},[]);
-  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),15000); const p=setInterval(async()=>{try{const r=await fetch("api/live",{cache:"no-store"});if(r.ok)setData(await r.json());}catch{}},60000);return()=>{clearInterval(t);clearInterval(p);};},[]);
+  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),15000); const p=setInterval(async()=>{try{const r=await fetch(liveApiUrl(),{cache:"no-store"});if(r.ok)setData(await r.json());}catch{}},60000);return()=>{clearInterval(t);clearInterval(p);};},[]);
   const freight=data.trains.filter(t=>t.carrier.toLowerCase()!=="amtrak"); const amtrak=data.trains.filter(t=>t.carrier.toLowerCase()==="amtrak");
   const next=data.nextEvent; const nextCount=useMemo(()=>countdown(next.etaBest),[next.etaBest,now]);
   return <>
