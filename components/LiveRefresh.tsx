@@ -15,7 +15,7 @@ function track(name:string,params:Record<string,unknown>={}){if(typeof window!==
 export default function LiveRefresh({initial}:{initial:DashboardSnapshot}){
   const [data,setData]=useState(initial); const [now,setNow]=useState(Date.now());
   useEffect(()=>{track("fort_madison_loaded",{next_event_kind:initial.nextEvent.kind,convergence_state:initial.convergence.state});},[]);
-  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),15000); const p=setInterval(async()=>{try{const r=await fetch("/api/live",{cache:"no-store"});if(r.ok)setData(await r.json());}catch{}},60000);return()=>{clearInterval(t);clearInterval(p);};},[]);
+  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),15000); const p=setInterval(async()=>{try{const r=await fetch("api/live",{cache:"no-store"});if(r.ok)setData(await r.json());}catch{}},60000);return()=>{clearInterval(t);clearInterval(p);};},[]);
   const freight=data.trains.filter(t=>t.carrier.toLowerCase()!=="amtrak"); const amtrak=data.trains.filter(t=>t.carrier.toLowerCase()==="amtrak");
   const next=data.nextEvent; const nextCount=useMemo(()=>countdown(next.etaBest),[next.etaBest,now]);
   return <>
