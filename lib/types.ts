@@ -82,5 +82,31 @@ export interface DashboardSnapshot {
     message: string;
     overlapProbability: number | null;
   };
+  watchSummary: {
+    bridgeOpening: {
+      percent: number | null;
+      label: "HIGH" | "ELEVATED" | "MODERATE" | "LOW" | "NO CURRENT SIGNAL";
+      reasons: string[];
+      vesselName: string | null;
+      start: string | null;
+      best: string | null;
+      end: string | null;
+      sourceLock: "18" | "19" | "AIS" | "unknown" | null;
+      confidence: Confidence;
+      status: EvidenceStatus;
+    };
+    bestWindow: {
+      kind: "bridge" | "train" | "convergence" | "quiet";
+      title: string;
+      start: string | null;
+      best: string | null;
+      end: string | null;
+      score: number;
+      label: string;
+      reason: string;
+      confidence: Confidence;
+      checkBackAt: string;
+    };
+  };
   health: Record<string, { ok: boolean; detail: string; observedAt?: string }>;
 }
