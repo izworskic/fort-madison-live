@@ -6,7 +6,8 @@ import dynamic from "next/dynamic";
 const LiveMap=dynamic(()=>import("./LiveMap"),{ssr:false,loading:()=> <div className="map-placeholder">Loading live map…</div>});
 const TZ="America/Chicago";
 const SKYLINE_URL="https://www.skylinewebcams.com/en/webcam/united-states/iowa/fort-madison/train-station.html";
-const RAILCAM_URL="https://www.youtube.com/watch?v=clH9iSEN8LA";
+const RAILCAM_ID="_0JYnfB6SWw";
+const RAILCAM_URL=`https://www.youtube.com/watch?v=${RAILCAM_ID}`;
 
 function time(iso?:string){if(!iso)return "—";return new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit"}).format(new Date(iso));}
 function countdown(iso?:string){if(!iso)return "";const m=Math.round((new Date(iso).getTime()-Date.now())/60000);if(m<0&&m>-15)return "now";if(m<0)return "passed";if(m<60)return `${m} min`;const h=Math.floor(m/60),r=m%60;return `${h}h ${r}m`;}
@@ -65,12 +66,12 @@ export default function LiveRefresh({initial}:{initial:DashboardSnapshot}){
     </section>
 
     <section className="section camera-section" id="camera">
-      <div className="section-head camera-head"><div><span className="kicker">WATCH IT HAPPEN</span><h2>Fort Madison live camera</h2></div><p>Keep the camera on while the engine tells you what is approaching. The view turns the prediction into something you can actually watch unfold.</p></div>
+      <div className="section-head camera-head"><div><span className="kicker">WATCH IT HAPPEN</span><h2>Fort Madison Bridge live</h2></div><p>Keep the camera on while the engine tells you what is approaching. This is the live Fort Madison bridge/rail view from Virtual Railfan.</p></div>
       <div className="camera-grid">
         <div className="video-shell">
-          <div className="video-top"><span><i/>LIVE VIEW</span><small>Fort Madison rail + river corridor</small></div>
-          <div className="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/clH9iSEN8LA?rel=0&modestbranding=1" title="Fort Madison live rail camera" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen/></div>
-          <div className="video-credit">Live video is provided through the publisher’s official YouTube player. Video availability and rights remain with the camera publisher.</div>
+          <div className="video-top"><span><i/>LIVE CAMERA</span><small>Fort Madison Bridge · Virtual Railfan</small></div>
+          <div className="video-frame"><iframe src={`https://www.youtube-nocookie.com/embed/${RAILCAM_ID}?rel=0&modestbranding=1&playsinline=1`} title="Fort Madison Bridge live rail camera by Virtual Railfan" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen/></div>
+          <div className="video-credit">Live stream via Virtual Railfan’s official YouTube player. Video availability and rights remain with Virtual Railfan.</div>
         </div>
         <aside className="watch-card">
           <span className="label">USE THE CAMERA WITH THE ENGINE</span>
@@ -78,7 +79,7 @@ export default function LiveRefresh({initial}:{initial:DashboardSnapshot}){
           <strong>{next.title}</strong>
           <p>{next.etaBest?`${range(next.etaStart,next.etaEnd,next.etaBest)} · ${nextCount}`:"No reliable arrival window is available yet."}</p>
           <div className="watch-cues"><span>1</span><p><b>Check the prediction.</b> The engine reconciles rail, river and bridge timing.</p><span>2</span><p><b>Watch the live view.</b> Look for the actual movement as the window approaches.</p><span>3</span><p><b>Use the map.</b> Observed positions appear only when a configured source reports them.</p></div>
-          <div className="camera-links"><a href={RAILCAM_URL} target="_blank" rel="noreferrer" onClick={()=>track("camera_external_click",{provider:"youtube"})}>Open camera on YouTube ↗</a><a href={SKYLINE_URL} target="_blank" rel="noreferrer" onClick={()=>track("camera_external_click",{provider:"skyline"})}>Alternate station camera ↗</a></div>
+          <div className="camera-links"><a href={RAILCAM_URL} target="_blank" rel="noreferrer" onClick={()=>track("camera_external_click",{provider:"youtube"})}>Open live camera on YouTube ↗</a><a href={SKYLINE_URL} target="_blank" rel="noreferrer" onClick={()=>track("camera_external_click",{provider:"skyline"})}>Skyline station camera ↗</a></div>
         </aside>
       </div>
     </section>
