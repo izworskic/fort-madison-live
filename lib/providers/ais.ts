@@ -25,10 +25,12 @@ export interface AisSnapshot {
 // map can surface vessels approaching from both Lock 18 and Lock 19.
 const FORT_MADISON_BBOX = [[[40.95, -91.65], [40.20, -90.90]]];
 const AISSTREAM_URL = "wss://stream.aisstream.io/v0/stream";
-const SAMPLE_MS = 6500;
-const CACHE_MS = 30_000;
+const SAMPLE_MS = 18_000;
+const CACHE_MS = 90_000;
+const RECENT_HOLD_MS = 5 * 60_000;
 
 let cached: { at: number; value: AisSnapshot } | null = null;
+let lastNonEmpty: { at: number; value: AisSnapshot } | null = null;
 let inFlight: Promise<AisSnapshot> | null = null;
 
 function numberOrNull(value: unknown): number | null {
@@ -131,11 +133,12 @@ async function fromHttpFeed(): Promise<AisSnapshot | null> {
 function fromAisStream(apiKey: string): Promise<AisSnapshot> {
   return new Promise(resolve => {
     const vessels = new Map<string, AisVessel>();
-    let connected = false;
+    let socketOpened = false;
+    let subscriptionConfirmed = false;
     let settled = false;
     let socket: WebSocket | null = null;
 
-    const finish = (detail?: string, ok = connected) => {
+    const finish = (detail?: string, ok = subscriptionConfirmed) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -143,12 +146,15 @@ function fromAisStream(apiKey: string): Promise<AisSnapshot> {
       const list = [...vessels.values()]
         .sort((a, b) => (b.sogKnots ?? 0) - (a.sogKnots ?? 0))
         .slice(0, 100);
+      let defaultDetail = `${list.length} live AIS vessel${list.length === 1 ? "" : "s"} received in the Fort Madison corridor`;
+      if (!list.length && subscriptionConfirmed) defaultDetail = `AISStream subscription confirmed; no position report arrived during the ${Math.round(SAMPLE_MS / 1000)}-second sample`;
+      if (!subscriptionConfirmed && socketOpened) defaultDetail = "AISStream socket opened but the subscription was not confirmed";
       resolve({
         generatedAt: new Date().toISOString(),
         vessels: list,
         health: {
           ok,
-          detail: detail ?? (list.length ? `${list.length} live AIS vessel${list.length === 1 ? "" : "s"} received in the Fort Madison corridor` : "AISStream connected; no position reports arrived during this short sample"),
+          detail: detail ?? defaultDetail,
           source: "AISStream"
         }
       });
@@ -159,7 +165,7 @@ function fromAisStream(apiKey: string): Promise<AisSnapshot> {
     try {
       socket = new WebSocket(AISSTREAM_URL, { perMessageDeflate: true });
       socket.on("open", () => {
-        connected = true;
+        socketOpened = true;
         socket?.send(JSON.stringify({
           APIKey: apiKey,
           BoundingBoxes: FORT_MADISON_BBOX,
@@ -169,13 +175,17 @@ function fromAisStream(apiKey: string): Promise<AisSnapshot> {
       socket.on("message", (raw: RawData) => {
         try {
           const payload = JSON.parse(raw.toString());
+          if (payload?.MessageType === "SubscriptionConfirmation") {
+            subscriptionConfirmed = true;
+            return;
+          }
           const vessel = normalizeAisStreamMessage(payload);
           if (vessel) vessels.set(vessel.mmsi, vessel);
         } catch {}
       });
       socket.on("error", error => finish(`AISStream connection error: ${error.message}`, false));
       socket.on("close", (code, reason) => {
-        if (!settled && !connected) finish(`AISStream closed before subscription (${code}${reason ? `: ${reason.toString()}` : ""})`, false);
+        if (!settled && !subscriptionConfirmed) finish(`AISStream closed before subscription confirmation (${code}${reason ? `: ${reason.toString()}` : ""})`, false);
       });
     } catch (error) {
       finish(`AISStream setup failed: ${error instanceof Error ? error.message : "unknown error"}`, false);
@@ -208,7 +218,22 @@ export async function getAisSnapshot(): Promise<AisSnapshot> {
   if (inFlight) return inFlight;
 
   inFlight = loadAisSnapshot().then(value => {
-    cached = { at: Date.now(), value };
+    const capturedAt = Date.now();
+    if (value.vessels.length) {
+      lastNonEmpty = { at: capturedAt, value };
+    } else if (value.health.ok && lastNonEmpty && capturedAt - lastNonEmpty.at < RECENT_HOLD_MS) {
+      const ageMin = Math.max(1, Math.round((capturedAt - lastNonEmpty.at) / 60_000));
+      value = {
+        ...lastNonEmpty.value,
+        generatedAt: new Date().toISOString(),
+        health: {
+          ok: true,
+          source: lastNonEmpty.value.health.source,
+          detail: `No new position report in the current sample; showing ${lastNonEmpty.value.vessels.length} recent AIS vessel${lastNonEmpty.value.vessels.length === 1 ? "" : "s"} captured about ${ageMin} min ago`
+        }
+      };
+    }
+    cached = { at: capturedAt, value };
     return value;
   }).finally(() => {
     inFlight = null;
