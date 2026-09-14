@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 const LiveMap=dynamic(()=>import("./LiveMap"),{ssr:false,loading:()=> <div className="map-placeholder">Loading live map…</div>});
 const TZ="America/Chicago";
 const SKYLINE_URL="https://www.skylinewebcams.com/en/webcam/united-states/iowa/fort-madison/train-station.html";
-const RAILCAM_ID="_0JYnfB6SWw";
+const RAILCAM_ID="clH9iSEN8LA";
 const RAILCAM_URL=`https://www.youtube.com/watch?v=${RAILCAM_ID}`;
 
 function time(iso?:string){if(!iso)return "—";return new Intl.DateTimeFormat("en-US",{timeZone:TZ,hour:"numeric",minute:"2-digit"}).format(new Date(iso));}
@@ -70,7 +70,7 @@ export default function LiveRefresh({initial}:{initial:DashboardSnapshot}){
       <div className="camera-grid">
         <div className="video-shell">
           <div className="video-top"><span><i/>LIVE CAMERA</span><small>Fort Madison Bridge · Virtual Railfan</small></div>
-          <div className="video-frame"><iframe src={`https://www.youtube-nocookie.com/embed/${RAILCAM_ID}?rel=0&modestbranding=1&playsinline=1`} title="Fort Madison Bridge live rail camera by Virtual Railfan" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen/></div>
+          <div className="video-frame"><iframe src={`https://www.youtube.com/embed/${RAILCAM_ID}?rel=0&playsinline=1`} title="Fort Madison Bridge live rail camera by Virtual Railfan" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen/></div>
           <div className="video-credit">Live stream via Virtual Railfan’s official YouTube player. Video availability and rights remain with Virtual Railfan.</div>
         </div>
         <aside className="watch-card">
