@@ -13,6 +13,7 @@ function countdown(iso?:string){if(!iso)return "";const m=Math.round((new Date(i
 function range(a?:string,b?:string,best?:string){if(a&&b&&a!==b)return `${time(a)}–${time(b)}`;return time(best||a||b);}
 function trend(v:number|null){if(v===null)return "";return `${v>0?"↑":v<0?"↓":"→"}${Math.abs(v).toFixed(2)}`;}
 function ageLabel(iso:string,now:number){const min=Math.max(0,Math.round((now-new Date(iso).getTime())/60000));if(min<2)return "updated just now";if(min<60)return `updated ${min} min ago`;return `updated at ${time(iso)}`;}
+function minutesUntil(iso:string|undefined,now:number){if(!iso)return null;return Math.round((new Date(iso).getTime()-now)/60000);}
 function track(name:string,params:Record<string,unknown>={}){if(typeof window!=="undefined") (window as any).gtag?.("event",name,params);}
 function liveApiUrl(){if(typeof window!=="undefined"&&window.location.pathname.startsWith("/national-tools/fort-madison-live"))return "/national-tools/fort-madison-live/api/live";return "/api/live";}
 
@@ -33,6 +34,34 @@ export default function LiveRefresh({initial}:{initial:DashboardSnapshot}){
   const amtrak=data.trains.filter(t=>t.carrier.toLowerCase()==="amtrak");
   const next=data.nextEvent;
   const nextCount=useMemo(()=>countdown(next.etaBest),[next.etaBest,now]);
+  const mins=minutesUntil(next.etaBest,now);
+
+  let decisionTag="QUIET RIGHT NOW";
+  let decisionHeadline="Nothing worth waiting for yet.";
+  let decisionText="The engine does not have a reliable train, tow or bridge event close enough to justify sitting on the camera. Check back when a new watch window appears.";
+
+  const hasUsableEvent=next.kind!=="quiet"&&next.etaBest&&mins!==null&&mins>=-15;
+  if(hasUsableEvent&&mins!==null){
+    if(mins<=10){
+      decisionTag="WATCH NOW";
+      decisionHeadline="Open the camera now.";
+      decisionText=`${next.title} is inside or very near its likely Fort Madison window. The timing is ${next.status.toLowerCase()}, so treat it as a watch window rather than an exact arrival time.`;
+    }else if(mins<=45){
+      decisionTag="WATCH SOON";
+      decisionHeadline=`Check the camera in about ${nextCount}.`;
+      decisionText=`${next.title} is the next event the engine thinks is worth watching. You do not need to sit on the stream yet — come back as the window gets close.`;
+    }else if(mins<=120){
+      decisionTag="COME BACK LATER";
+      decisionHeadline=`Come back in about ${nextCount}.`;
+      decisionText=`The next useful watch window is ${range(next.etaStart,next.etaEnd,next.etaBest)} for ${next.title}. Nothing in the current data says you need to watch continuously before then.`;
+    }else{
+      decisionTag="PLAN FOR LATER";
+      decisionHeadline=`Next watch window: ${range(next.etaStart,next.etaEnd,next.etaBest)}.`;
+      decisionText=`${next.title} is the next identifiable event, but it is still too far away to justify watching now. Use this page again as the window approaches.`;
+    }
+  }
+
+  const whyTitle=next.kind==="bridge"?"The bridge may be the event.":next.kind==="tow"?"A tow may force the next bridge move.":next.kind==="train"?"A train is the next likely crossing event.":"The crossing is quiet for now.";
 
   return <>
     <section className="live-status" aria-label="Live engine status">
@@ -41,31 +70,29 @@ export default function LiveRefresh({initial}:{initial:DashboardSnapshot}){
       <p>Fort Madison, Iowa · Central Time</p>
     </section>
 
-    <section className="hero-grid">
+    <section className="hero-grid" aria-label="Fort Madison watch decision">
       <article className="next-card">
-        <div className="eyebrow-row"><span className="pulse"/><span>{next.watchLabel}</span><span className="truth-chip">{next.status}</span></div>
-        <h2>{next.title}</h2>
-        <p className="hero-sub">{next.subtitle}</p>
-        {next.etaBest&&<div className="eta-row"><div><span className="label">FORT MADISON WINDOW</span><strong>{range(next.etaStart,next.etaEnd,next.etaBest)}</strong></div><div className="countdown"><span>ABOUT</span><strong>{nextCount}</strong></div></div>}
-        <div className="confidence"><span>Prediction confidence</span><b>{next.confidence}</b></div>
+        <div className="eyebrow-row"><span className="pulse"/><span>YOUR WATCH DECISION</span><span className="truth-chip">{decisionTag}</span></div>
+        <h2>{decisionHeadline}</h2>
+        <p className="hero-sub">{decisionText}</p>
+        <div className="eta-row">
+          <div><span className="label">NEXT LIKELY EVENT</span><strong>{next.kind==="quiet"?"No reliable event yet":next.title}</strong><small>{next.kind==="quiet"?"The engine is still checking rail and river signals.":next.subtitle}</small></div>
+          <div className="countdown"><span>BEST WATCH WINDOW</span><strong>{next.etaBest?range(next.etaStart,next.etaEnd,next.etaBest):"—"}</strong><small>{nextCount&&nextCount!=="passed"?nextCount:""}</small></div>
+        </div>
+        <div className="confidence"><span>How certain is this?</span><b>{next.confidence} · {next.status}</b></div>
+        <div className="camera-links"><a href="#camera" onClick={()=>track("decision_cta",{action:"camera",decision:decisionTag})}>Watch the live camera ↓</a><a href="#map" onClick={()=>track("decision_cta",{action:"map",decision:decisionTag})}>See the crossing map ↓</a></div>
       </article>
       <aside className="convergence-card">
-        <span className="label">WHAT TO WATCH</span>
-        <h2>{data.convergence.state}</h2>
-        <p>{data.convergence.message}</p>
-        {data.convergence.overlapProbability!==null&&data.convergence.overlapProbability>0&&<div className="overlap"><strong>{data.convergence.overlapProbability}%</strong><span>modeled rail + river window overlap</span></div>}
+        <span className="label">WHAT THE ENGINE IS WATCHING</span>
+        <h2>{whyTitle}</h2>
+        <p>Fort Madison is unusual because river traffic and railroad traffic share one moving bridge. A commercial tow can require the swing span to open and temporarily hold rail traffic. The engine looks for those moments so you do not have to interpret several feeds yourself.</p>
+        <div className="overlap"><strong>{data.convergence.state}</strong><span>{data.convergence.message}</span></div>
+        {data.convergence.overlapProbability!==null&&data.convergence.overlapProbability>0&&<div className="overlap"><strong>{data.convergence.overlapProbability}%</strong><span>modeled rail + river overlap</span></div>}
       </aside>
     </section>
 
-    <section className="quick-grid" aria-label="Live conditions">
-      <div><span>River stage</span><strong>{data.river.stageFt!==null?`${data.river.stageFt.toFixed(2)} ft`:"Unavailable"}</strong><small>{trend(data.river.trend24hFt)} 24 hr · flood {data.river.floodStageFt??"—"} ft</small></div>
-      <div><span>Tow candidates</span><strong>{data.tows.length}</strong><small>named movements from Locks 18 / 19</small></div>
-      <div><span>Identified freight</span><strong>{freight.length||"—"}</strong><small>{freight.length?"observed by configured source":"live provider not connected"}</small></div>
-      <div><span>Next Amtrak</span><strong>{amtrak[0]?countdown(amtrak[0].etaBest):"—"}</strong><small>{amtrak[0]?.displayId||"Southwest Chief"}</small></div>
-    </section>
-
     <section className="section camera-section" id="camera">
-      <div className="section-head camera-head"><div><span className="kicker">WATCH IT HAPPEN</span><h2>Fort Madison live camera</h2></div><p>Keep the camera on while the engine tells you what is approaching. This is the live Fort Madison view you selected.</p></div>
+      <div className="section-head camera-head"><div><span className="kicker">WATCH THE DECISION PLAY OUT</span><h2>Fort Madison live camera</h2></div><p>The recommendation above tells you whether this stream is worth your time right now. When a watch window approaches, use the camera to see the actual crossing activity.</p></div>
       <div className="camera-grid">
         <div className="video-shell">
           <div className="video-top"><span><i/>LIVE CAMERA</span><small>Fort Madison · YouTube Live</small></div>
@@ -73,18 +100,25 @@ export default function LiveRefresh({initial}:{initial:DashboardSnapshot}){
           <div className="video-credit">Live stream via the publisher’s official YouTube player. Video availability and rights remain with the stream publisher.</div>
         </div>
         <aside className="watch-card">
-          <span className="label">USE THE CAMERA WITH THE ENGINE</span>
-          <h3>{next.kind==="quiet"?"Watch the crossing":"Watch for this next"}</h3>
-          <strong>{next.title}</strong>
-          <p>{next.etaBest?`${range(next.etaStart,next.etaEnd,next.etaBest)} · ${nextCount}`:"No reliable arrival window is available yet."}</p>
-          <div className="watch-cues"><span>1</span><p><b>Check the prediction.</b> The engine reconciles rail, river and bridge timing.</p><span>2</span><p><b>Watch the live view.</b> Look for the actual movement as the window approaches.</p><span>3</span><p><b>Use the map.</b> Observed positions appear only when a configured source reports them.</p></div>
+          <span className="label">WHAT SHOULD I DO?</span>
+          <h3>{decisionHeadline}</h3>
+          <strong>{next.kind==="quiet"?"No reliable event close enough yet":next.title}</strong>
+          <p>{next.etaBest?`${range(next.etaStart,next.etaEnd,next.etaBest)} · ${nextCount}`:"The engine will surface a watch window when it has one."}</p>
+          <div className="watch-cues"><span>1</span><p><b>Watching remotely?</b> Follow the recommendation above instead of leaving the stream open all day.</p><span>2</span><p><b>Already at the riverfront?</b> Use the next-event window to know what movement to look for.</p><span>3</span><p><b>Want the evidence?</b> The live conditions, map and source-health sections below show what the engine is using.</p></div>
           <div className="camera-links"><a href={RAILCAM_URL} target="_blank" rel="noreferrer" onClick={()=>track("camera_external_click",{provider:"youtube"})}>Open this live camera on YouTube ↗</a></div>
         </aside>
       </div>
     </section>
 
+    <section className="quick-grid" aria-label="Engine evidence">
+      <div><span>River stage</span><strong>{data.river.stageFt!==null?`${data.river.stageFt.toFixed(2)} ft`:"Unavailable"}</strong><small>{trend(data.river.trend24hFt)} 24 hr · flood {data.river.floodStageFt??"—"} ft</small></div>
+      <div><span>Tow candidates</span><strong>{data.tows.length}</strong><small>named movements from Locks 18 / 19</small></div>
+      <div><span>Identified freight</span><strong>{freight.length||"—"}</strong><small>{freight.length?"observed by configured source":"live provider not connected"}</small></div>
+      <div><span>Next Amtrak</span><strong>{amtrak[0]?countdown(amtrak[0].etaBest):"—"}</strong><small>{amtrak[0]?.displayId||"Southwest Chief"}</small></div>
+    </section>
+
     <section className="section map-section" id="map">
-      <div className="section-head"><div><span className="kicker">THE CROSSING</span><h2>A map that explains the place</h2></div><p>Use the bridge as your anchor. Live train and tow markers appear only when their position is actually observed by a configured source — the map never pretends a prediction is GPS.</p></div>
+      <div className="section-head"><div><span className="kicker">WHY THE TIMING WORKS</span><h2>See the crossing the engine is modeling</h2></div><p>The bridge is the decision point. Observed train and tow positions appear only when a configured source actually reports them; predictions are never drawn as fake GPS positions.</p></div>
       <LiveMap data={data}/>
     </section>
 
