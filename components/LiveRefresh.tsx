@@ -189,7 +189,7 @@ export default function LiveRefresh({initial}:{initial:DashboardSnapshot}){
     <section className="section truth-section">
       <details className="truth-details">
         <summary><div><span className="kicker">DATA STATUS</span><strong>What is observed, estimated or unavailable?</strong></div><span className="summary-action">View source health +</span></summary>
-        <div className="health-grid">{(Object.entries(data.health) as [string,{ok:boolean;detail:string;observedAt?:string}][]).map(([k,v])=><div key={k} className={v.ok?"health ok":"health degraded"}><span>{k}</span><strong>{v.ok?"AVAILABLE":"DEGRADED"}</strong><p>{v.detail}</p></div>)}</div>
+        <div className="health-grid">{(Object.entries(data.health) as [string,{ok:boolean;detail:string;observedAt?:string}][]).map(([k,v])=><div key={k} className={v.ok?"health ok":"health degraded"}><span>{k}</span><strong>{v.ok?"AVAILABLE":"DEGRADED"}</strong><p>{v.detail}</p>{k==="lpms"&&!v.ok&&<a href="https://ndc.ops.usace.army.mil/ords/r/lpms/corps-locks/home" target="_blank" rel="noopener noreferrer">Open official USACE lock reports</a>}</div>)}</div>
       </details>
     </section>
   </>;
