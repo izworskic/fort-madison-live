@@ -51,3 +51,9 @@ test('live AIS health messages never publish connection internals or credentials
   assert.doesNotMatch(aisSource,/add AISSTREAM_API_KEY on the server/);
   assert.match(aisSource,/No vessel positions are inferred/);
 });
+
+test('degraded source status gives an official Corps Locks reporting route, never guessed tow arrival',()=>{
+  const ui=fs.readFileSync(new URL('../components/LiveRefresh.tsx',import.meta.url),'utf8');
+  assert.match(ui,/k===\"lpms\"&&!v\.ok/);
+  assert.match(ui,/ndc\.ops\.usace\.army\.mil\/ords\/r\/lpms\/corps-locks\/home/);
+});
