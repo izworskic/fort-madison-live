@@ -125,7 +125,7 @@ async function fromHttpFeed(): Promise<AisSnapshot | null> {
     return {
       generatedAt: new Date().toISOString(),
       vessels: [],
-      health: { ok: false, detail: `Configured AIS feed failed: ${error instanceof Error ? error.message : "unknown error"}`, source: "AIS feed" }
+      health: { ok: false, detail: "Configured AIS position feed is temporarily unavailable.", source: "AIS feed" }
     };
   }
 }
@@ -183,12 +183,12 @@ function fromAisStream(apiKey: string): Promise<AisSnapshot> {
           if (vessel) vessels.set(vessel.mmsi, vessel);
         } catch {}
       });
-      socket.on("error", error => finish(`AISStream connection error: ${error.message}`, false));
+      socket.on("error", error => finish("AISStream position connection temporarily unavailable", false));
       socket.on("close", (code, reason) => {
-        if (!settled && !subscriptionConfirmed) finish(`AISStream closed before subscription confirmation (${code}${reason ? `: ${reason.toString()}` : ""})`, false);
+        if (!settled && !subscriptionConfirmed) finish("AISStream subscription was not confirmed; no live positions are available", false);
       });
     } catch (error) {
-      finish(`AISStream setup failed: ${error instanceof Error ? error.message : "unknown error"}`, false);
+      finish("AISStream connection could not start", false);
     }
   });
 }
@@ -204,7 +204,7 @@ async function loadAisSnapshot(): Promise<AisSnapshot> {
       vessels: [],
       health: {
         ok: false,
-        detail: "AIS integration is ready; add AISSTREAM_API_KEY on the server to turn on live vessel positions",
+        detail: "No live AIS position feed is available for this area. No vessel positions are inferred.",
         source: "AISStream"
       }
     };
